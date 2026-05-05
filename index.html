@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Samsung & Transcom Casual Quiz - Cairo</title>
+<style>
+    body { 
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+        background-color: #f0f2f5; 
+        color: #333;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        margin: 0;
+    }
+    .container { 
+        background: white; 
+        width: 100%;
+        max-width: 650px; 
+        padding: 30px; 
+        border-radius: 12px; 
+        box-shadow: 0 8px 16px rgba(0,0,0,0.1); 
+        display: none; 
+        position: relative;
+    }
+    #qr-container { display: block; text-align: center; }
+    h1, h2, h3 { text-align: center; color: #1a73e8; margin-top: 0; }
+    
+    .quiz-world-text { font-size: 1.8em; font-weight: bold; color: #1a73e8; margin-bottom: 25px; text-transform: uppercase; letter-spacing: 1px; }
+
+    #static-qr { display: block; margin: 0 auto 20px auto; padding: 15px; background: white; border: 2px dashed #1a73e8; border-radius: 8px; cursor: pointer; transition: transform 0.2s ease; max-width: 220px; height: auto; }
+    #static-qr:hover { transform: scale(1.05); }
+    
+    .btn-main { display: block; width: 100%; padding: 15px; margin-bottom: 15px; font-size: 1.2em; font-weight: bold; background: #1a73e8; color: white; border: none; cursor: pointer; border-radius: 8px; transition: background 0.3s; }
+    .btn-main:hover { background: #1557b0; }
+    
+    /* Name Input Styles */
+    .name-input { width: 100%; padding: 15px; font-size: 1.2em; border: 2px solid #ccc; border-radius: 8px; margin-bottom: 20px; box-sizing: border-box; }
+    .name-input:focus { border-color: #1a73e8; outline: none; }
+
+    /* Timer Styles */
+    .timer-container { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #e0e0e0; padding-bottom: 10px; }
+    .retro-timer { font-family: 'Courier New', Courier, monospace; font-size: 2em; font-weight: bold; color: #333; background: #f8f9fa; padding: 5px 15px; border: 2px solid #333; border-radius: 5px; box-shadow: inset 0 0 5px rgba(0,0,0,0.2); }
+    @keyframes panic-pulse { 0% { transform: scale(1); color: #e53935; border-color: #e53935; } 50% { transform: scale(1.05); color: #b71c1c; border-color: #b71c1c; } 100% { transform: scale(1); color: #e53935; border-color: #e53935; } }
+    .time-low { animation: panic-pulse 0.5s infinite; color: #e53935; }
+
+    .question-title { font-size: 1.3em; font-weight: 600; margin-bottom: 20px; }
+    .options label { display: block; margin-bottom: 12px; cursor: pointer; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 2px solid transparent; transition: all 0.2s ease; }
+    .options label:hover { background: #e8f0fe; border-color: #d2e3fc; }
+    .options input[type="radio"] { margin-right: 15px; transform: scale(1.2); }
+    
+    .navigation-buttons { display: flex; justify-content: space-between; margin-top: 30px; }
+    .nav-btn { padding: 12px 24px; font-size: 1em; font-weight: bold; cursor: pointer; border: none; border-radius: 6px; background: #1a73e8; color: white; transition: background 0.3s; }
+    .nav-btn:hover:not(:disabled) { background: #1557b0; }
+    .nav-btn:disabled { background: #cccccc; cursor: not-allowed; }
+    
+    .stats-container { display: flex; flex-wrap: wrap; justify-content: space-around; background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 25px; font-size: 1.2em; font-weight: bold; text-align: center; gap: 10px; }
+    .stat-correct { color: #155724; }
+    .stat-wrong { color: #721c24; }
+
+    /* Result Item Styles */
+    #review-container { display: none; margin-top: 20px; }
+    .result-item { margin-bottom: 15px; padding: 15px; border-radius: 8px; }
+    .correct { background-color: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+    .incorrect { background-color: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+
+    /* Leaderboard Styles */
+    .leaderboard-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    .leaderboard-table th, .leaderboard-table td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+    .leaderboard-table th { background-color: #f8f9fa; color: #1a73e8; }
+    .leaderboard-table tr:nth-child(even) { background-color: #f9f9f9; }
+    .rank-1 { font-weight: bold; color: #d4af37; } /* Gold */
+    .rank-2 { font-weight: bold; color: #c0c0c0; } /* Silver */
+    .rank-3 { font-weight: bold; color: #cd7f32; } /* Bronze */
+
+    .progress-bar { height: 6px; background: #e0e0e0; border-radius: 3px; margin-bottom: 15px; overflow: hidden; }
+    .progress { height: 100%; background: #1a73e8; width: 0%; transition: width 0.3s ease; }
+    
+    #qr-error { display: none; color: red; margin: 20px; font-weight: bold; }
+    #already-taken-msg { color: #e53935; text-align: center; font-weight: bold; margin-bottom: 15px; }
+</style>
+</head>
+<body>
+
+<div class="container" id="qr-container">
+    <div class="quiz-world-text">Take me to QUIZ world</div>
+    <img id="static-qr" src="qr.png" alt="Scan to enter quiz" onclick="simulateScan()" onerror="this.style.display='none'; document.getElementById('qr-error').style.display='block';">
+    <div id="qr-error">
+        Image not found! Make sure you uploaded your QR code to GitHub and named it exactly 'qr.png'.<br><br>
+        <button onclick="simulateScan()" style="margin-top: 10px;">Click here to bypass and test quiz</button>
+    </div>
+    <p style="font-size: 0.8em; color: white; user-select: none;">Click to scan</p>
+</div>
+
+<div class="container" id="name-container">
+    <h1 id="ui-name-title">Enter Your Name</h1>
+    <p id="ui-name-subtitle" style="text-align: center; color: #555;">This will be displayed on the leaderboard!</p>
+    <input type="text" id="player-name" class="name-input" placeholder="Your Name" required>
+    <button class="btn-main" id="ui-start-btn" onclick="startQuiz()">Start Quiz</button>
+</div>
+
+<div class="container" id="quiz-container">
+    <div class="timer-container">
+        <h1 id="ui-quiz-title" style="margin: 0; text-align: left;">Samsung & Transcom Quiz</h1>
+        <div class="retro-timer" id="retro-timer">30</div>
+    </div>
+    <div class="progress-bar"><div class="progress" id="progress"></div></div>
+    <div id="question-container">
+        <div class="question-title" id="question-text"></div>
+        <div class="options" id="options-container"></div>
+    </div>
+    <div class="navigation-buttons">
+        <button class="nav-btn" id="prev-btn" onclick="prevQuestion()" disabled>Back</button>
+        <button class="nav-btn" id="next-btn" onclick="nextQuestion()">Next</button>
+        <button class="nav-btn" id="submit-btn" onclick="processSubmission()" style="display:none;">Submit Quiz</button>
+    </div>
+</div>
+
+<div class="container" id="result-container">
+    <div id="already-taken-msg"></div>
+    <h1 id="ui-result-title" style="color: #333;">Quiz Results</h1>
+    <h2 id="player-result-name" style="text-align: center; color: #1a73e8; margin-bottom: 20px;"></h2>
+    
+    <div class="stats-container">
+        <div class="stat-correct" id="stats-correct"></div>
+        <div class="stat-wrong" id="stats-wrong"></div>
+    </div>
+
+    <div style="text-align: center;">
+        <button class="btn-main" style="width: auto; padding: 10px 20px; margin-bottom: 0;" id="ui-view-answers-btn" onclick="toggleAnswers()">View Correct Answers</button>
+    </div>
+    <div id="review-container"></div>
+
+    <div id="leaderboard-section" style="margin-top: 30px; border-top: 2px solid #eee; padding-top: 20px;">
+        <h2 id="ui-leaderboard-title">Global Leaderboard</h2>
+        <p id="loading-leaderboard" style="text-align:center;">Loading scores...</p>
+        <table class="leaderboard-table" id="leaderboard-table" style="display:none;">
+            <thead>
+                <tr>
+                    <th id="ui-rank-col">Rank</th>
+                    <th id="ui-name-col">Name</th>
+                    <th id="ui-score-col">Score (%)</th>
+                </tr>
+            </thead>
+            <tbody id="leaderboard-body">
+                </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    // New endpoint created specifically to reset the Cairo Leaderboard!
+    const FIREBASE_URL = "https://samsung-quiz-1cff7-default-rtdb.europe-west1.firebasedatabase.app/casual_cairo_scores.json";
+
+    const uiText = {
+        nameTitle: "Enter Your Name",
+        nameSubtitle: "This will be displayed on the leaderboard!",
+        startBtn: "Start Quiz",
+        title: "Samsung Quiz",
+        back: "Back",
+        next: "Next",
+        submit: "Submit Quiz",
+        resultsTitle: "Quiz Results",
+        statsCorrect: "Correct: {0}%",
+        statsWrong: "Wrong / Unanswered: {0}%",
+        leaderboardTitle: "Global Leaderboard",
+        colRank: "Rank",
+        colName: "Name",
+        colScore: "Score (%)",
+        errorDB: "Could not load global leaderboard.",
+        alreadyTaken: "You have already completed this quiz. Here are the results.",
+        viewAnswers: "View Correct Answers",
+        hideAnswers: "Hide Correct Answers",
+        yourAnswer: "Your Answer",
+        correctAnswer: "Correct Answer",
+        noAnswer: "Time out / No answer selected"
+    };
+
+    const quizData = [
+        {
+            question: "1. From what country does Samsung originate?",
+            options: ["Earth", "North Korea", "South Korea", "Japan"],
+            answer: 2
+        },
+        {
+            question: "2. From what country does Transcom originate?",
+            options: ["Milky Way Galaxy", "Malmö", "Sweden", "USA"],
+            answer: 2
+        },
+        {
+            question: "3. Which operating system does Galaxy mobiles run?",
+            options: ["Alien", "IOS", "Android", "Oxygen OS"],
+            answer: 2
+        },
+        {
+            question: "4. Which city does Samsung SENA have its headquarters?",
+            options: ["Stockholm", "Suwon", "Oslo", "Copenhagen"],
+            answer: 0
+        },
+        {
+            question: "5. Which of these are a B2B product?",
+            options: ["QLED TV", "Signage Screen", "Washing Machine", "Galaxy phone"],
+            answer: 1
+        },
+        {
+            question: "6. Which continents have Samsung SENA their operations?",
+            options: ["Europe, Africa", "Asia, America", "Antarctica, Oceania", "Middle East, South America"],
+            answer: 0
+        },
+        {
+            question: "7. Samsung's construction division (Samsung C&T) helped build which of these iconic, record-breaking skyscrapers?",
+            options: ["The Empire State Building", "The Shard", "The Eiffel Tower", "The Burj Khalifa"],
+            answer: 3
+        },
+        {
+            question: "8. What is the name of the Business Manager for Transcom in Cairo?",
+            options: ["Marija Masic", "Davor Japuncic", "Ahmed Gamaleldin", "Omar Sharif"],
+            answer: 3
+        },
+        {
+            question: "9. Who is Marcus Turesson?",
+            options: ["G.O.A.T", "Samsung CEO", "Samsung, Customer Interaction Manager", "Transcom CEO"],
+            answer: 2
+        },
+        {
+            question: "10. What is the name of the site where Transcom have their Samsung Operations?",
+            options: ["Cairo 1", "Cairo 2", "New Cairo", "6th of October City"],
+            answer: 1
+        }
+    ];
+
+    let playerName = '';
+    let currentQuestion = 0;
+    let userAnswers = new Array(quizData.length).fill(null);
+    let timerInterval;
+    let timeLeft = 30;
+
+    // Keys specific to the Cairo casual quiz so it resets for returning users
+    const storageKeys = { 
+        completed: 'cairoQuizCompleted', 
+        name: 'cairoQuizName', 
+        correct: 'cairoQuizCorrectCount',
+        answers: 'cairoQuizAnswers'
+    };
+
+    window.onload = function() {
+        if (localStorage.getItem(storageKeys.completed) === 'true') {
+            const savedCorrect = parseInt(localStorage.getItem(storageKeys.correct));
+            const savedName = localStorage.getItem(storageKeys.name);
+            const savedAnswers = JSON.parse(localStorage.getItem(storageKeys.answers));
+            showResults(savedCorrect, savedName, true, savedAnswers);
+            return;
+        }
+
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('access') === 'granted') {
+            document.getElementById('qr-container').style.display = 'none';
+            // Skip language screen directly to name screen
+            document.getElementById('name-container').style.display = 'block';
+        }
+    };
+
+    function simulateScan() {
+        window.location.href = window.location.href.split('?')[0] + "?access=granted";
+    }
+
+    function startQuiz() {
+        const nameInput = document.getElementById('player-name').value.trim();
+        if(nameInput === "") {
+            alert("Please enter your name!");
+            return;
+        }
+        playerName = nameInput;
+
+        document.getElementById('name-container').style.display = 'none';
+        document.getElementById('quiz-container').style.display = 'block';
+        
+        // Setup static UI text since language selection is removed
+        document.getElementById('ui-quiz-title').innerText = uiText.title;
+        document.getElementById('prev-btn').innerText = uiText.back;
+        document.getElementById('next-btn').innerText = uiText.next;
+        document.getElementById('submit-btn').innerText = uiText.submit;
+        
+        loadQuestion();
+    }
+
+    const questionText = document.getElementById('question-text');
+    const optionsContainer = document.getElementById('options-container');
+    const prevBtn = document.getElementById('prev-btn');
+    const nextBtn = document.getElementById('next-btn');
+    const submitBtn = document.getElementById('submit-btn');
+    const progressBar = document.getElementById('progress');
+    const timerElement = document.getElementById('retro-timer');
+
+    function updateProgress() { progressBar.style.width = `${((currentQuestion + 1) / quizData.length) * 100}%`; }
+
+    function startTimer() {
+        clearInterval(timerInterval); 
+        timeLeft = 30; 
+        timerElement.innerText = timeLeft;
+        timerElement.classList.remove('time-low');
+        timerInterval = setInterval(() => {
+            timeLeft--;
+            timerElement.innerText = timeLeft;
+            if (timeLeft <= 5) timerElement.classList.add('time-low');
+            if (timeLeft <= 0) { clearInterval(timerInterval); autoAdvance(); }
+        }, 1000);
+    }
+
+    function autoAdvance() {
+        if (currentQuestion < quizData.length - 1) { currentQuestion++; loadQuestion(); } 
+        else { processSubmission(); }
+    }
+
+    function loadQuestion() {
+        const currentQuizData = quizData[currentQuestion];
+        questionText.innerText = currentQuizData.question;
+        optionsContainer.innerHTML = '';
+
+        currentQuizData.options.forEach((option, index) => {
+            const label = document.createElement('label');
+            const radio = document.createElement('input');
+            radio.type = 'radio'; radio.name = 'answer'; radio.value = index;
+            if (userAnswers[currentQuestion] === index) radio.checked = true;
+            radio.addEventListener('change', () => { userAnswers[currentQuestion] = index; });
+            label.appendChild(radio); label.appendChild(document.createTextNode(option));
+            optionsContainer.appendChild(label);
+        });
+
+        prevBtn.disabled = currentQuestion === 0;
+        
+        if (currentQuestion === quizData.length - 1) { nextBtn.style.display = 'none'; submitBtn.style.display = 'block'; } 
+        else { nextBtn.style.display = 'block'; submitBtn.style.display = 'none'; }
+        
+        updateProgress(); startTimer(); 
+    }
+
+    function prevQuestion() { if (currentQuestion > 0) { currentQuestion--; loadQuestion(); } }
+    function nextQuestion() { if (currentQuestion < quizData.length - 1) { currentQuestion++; loadQuestion(); } }
+
+    function processSubmission() {
+        clearInterval(timerInterval); 
+        let correctCount = 0;
+        quizData.forEach((q, index) => { if (userAnswers[index] === q.answer) correctCount++; });
+
+        const pctCorrect = Math.round((correctCount / quizData.length) * 100);
+
+        localStorage.setItem(storageKeys.completed, 'true');
+        localStorage.setItem(storageKeys.correct, correctCount);
+        localStorage.setItem(storageKeys.name, playerName);
+        localStorage.setItem(storageKeys.answers, JSON.stringify(userAnswers));
+
+        fetch(FIREBASE_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: playerName, score: pctCorrect, time: Date.now() })
+        }).catch(e => console.error("Could not save score", e));
+
+        showResults(correctCount, playerName, false, userAnswers);
+    }
+
+    function showResults(correctCount, name, isAlreadyTaken, submittedAnswers) {
+        document.getElementById('quiz-container').style.display = 'none';
+        document.getElementById('qr-container').style.display = 'none';
+        document.getElementById('name-container').style.display = 'none';
+        
+        if (isAlreadyTaken) {
+            document.getElementById('already-taken-msg').innerText = uiText.alreadyTaken;
+        }
+
+        const pctCorrect = Math.round((correctCount / quizData.length) * 100);
+        const pctWrong = 100 - pctCorrect;
+
+        document.getElementById('ui-result-title').innerText = uiText.resultsTitle;
+        document.getElementById('player-result-name').innerText = name + "!";
+        document.getElementById('stats-correct').innerText = uiText.statsCorrect.replace('{0}', pctCorrect);
+        document.getElementById('stats-wrong').innerText = uiText.statsWrong.replace('{0}', pctWrong);
+        
+        document.getElementById('ui-leaderboard-title').innerText = uiText.leaderboardTitle;
+        document.getElementById('ui-rank-col').innerText = uiText.colRank;
+        document.getElementById('ui-name-col').innerText = uiText.colName;
+        document.getElementById('ui-score-col').innerText = uiText.colScore;
+
+        // Build the review section
+        const reviewContainer = document.getElementById('review-container');
+        reviewContainer.innerHTML = '';
+        document.getElementById('ui-view-answers-btn').innerText = uiText.viewAnswers;
+
+        if (submittedAnswers && submittedAnswers.length > 0) {
+            quizData.forEach((q, index) => {
+                const isCorrect = submittedAnswers[index] === q.answer;
+                const resultDiv = document.createElement('div');
+                resultDiv.className = `result-item ${isCorrect ? 'correct' : 'incorrect'}`;
+                
+                let userAnswerText = submittedAnswers[index] !== null ? q.options[submittedAnswers[index]] : `<em>${uiText.noAnswer}</em>`;
+                let correctAnswerText = q.options[q.answer];
+
+                resultDiv.innerHTML = `
+                    <strong>${q.question}</strong><br>
+                    ${uiText.yourAnswer}: ${userAnswerText} <br>
+                    ${!isCorrect ? `<strong>${uiText.correctAnswer}:</strong> ${correctAnswerText}` : ''}
+                `;
+                reviewContainer.appendChild(resultDiv);
+            });
+        }
+
+        document.getElementById('result-container').style.display = 'block';
+        loadLeaderboard();
+    }
+
+    function toggleAnswers() {
+        const reviewContainer = document.getElementById('review-container');
+        const viewBtn = document.getElementById('ui-view-answers-btn');
+        
+        if (reviewContainer.style.display === 'none' || reviewContainer.style.display === '') {
+            reviewContainer.style.display = 'block';
+            viewBtn.innerText = uiText.hideAnswers;
+        } else {
+            reviewContainer.style.display = 'none';
+            viewBtn.innerText = uiText.viewAnswers;
+        }
+    }
+
+    async function loadLeaderboard() {
+        const loadingText = document.getElementById('loading-leaderboard');
+        const table = document.getElementById('leaderboard-table');
+        const tbody = document.getElementById('leaderboard-body');
+
+        try {
+            const response = await fetch(FIREBASE_URL);
+            const data = await response.json();
+            
+            if(!data) { loadingText.innerText = "No scores yet!"; return; }
+
+            const scoresArray = Object.values(data).sort((a, b) => b.score - a.score);
+
+            tbody.innerHTML = "";
+            scoresArray.forEach((player, index) => {
+                const tr = document.createElement('tr');
+                let rankStyle = "";
+                if(index === 0) rankStyle = "rank-1";
+                if(index === 1) rankStyle = "rank-2";
+                if(index === 2) rankStyle = "rank-3";
+
+                tr.innerHTML = `
+                    <td class="${rankStyle}">#${index + 1}</td>
+                    <td style="font-weight: bold;">${player.name}</td>
+                    <td>${player.score}%</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            loadingText.style.display = 'none';
+            table.style.display = 'table';
+
+        } catch (error) {
+            loadingText.innerText = uiText.errorDB;
+        }
+    }
+</script>
+</body>
+</html>
